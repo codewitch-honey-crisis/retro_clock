@@ -207,7 +207,6 @@ static void clock_app(void) {
     if(config_get_value("tzoffset",0,buf,sizeof(buf)-1)) {
         time_offset = 0;
         sscanf(buf,"%ld",&time_offset);
-        puts("got offset");
     }
     time_military = config_get_value("military",0,nullptr,0);
     main_text_font.initialize();
@@ -254,7 +253,6 @@ static void clock_app(void) {
             case WIFI_DISCONNECTED:
                 fputs("Connecting to ",stdout);
                 puts(wifi_ssid);
-                puts(wifi_pass);
                 wifi_init(wifi_ssid, wifi_pass);
                 main_wifi.invalidate();
                 break;
