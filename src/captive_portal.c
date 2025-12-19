@@ -308,10 +308,10 @@ static void parse_url_and_apply(const char* url) {
     if(set_military) {
         config_clear_values("military");
         config_add_value("military","1");
-        restart=set_military!=old_military;
+        if(!restart) restart=set_military!=old_military;
     } else {
         config_clear_values("military");
-        restart=set_military!=old_military;
+        if(!restart) restart=set_military!=old_military;
     }
     if(restart) {
         puts("Configuration saved. Restarting");

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "config.h"
+#include "config_input.h"
 #include "captive_portal.h"
 #include "ui.hpp"
 #include "vicon.hpp"
@@ -298,6 +299,7 @@ static void clock_app(void) {
                 main_text.visible(true);
             }
         }
+        config_input_update();
         lcd.update();
     }
 }
@@ -320,6 +322,7 @@ static void portal_on_connect(void* state) {
 }
 char qr_text[513];
 static void portal_app(void) {
+    config_clear_values("configure");
     captive_portal_on_sta_connect(portal_on_connect,nullptr);
     if(!captive_portal_init()) {
         puts("Failed to initialize captive portal");
@@ -395,10 +398,16 @@ extern "C" void app_main(void) {
     power_init();
     lcd_init();
     spiffs_init();
+    config_input_init();
     if(!config_get_value("deviceid",0,NULL,0)) {
         gen_device_id();
     }
+    bool cfg = config_get_value("configure",0,NULL,0);
     main_screen.dimensions({LCD_WIDTH, LCD_HEIGHT});
+    if(cfg) {
+        portal_app();
+        return;
+    }
     wifi_ssid[0] = 0;
     wifi_pass[0] = 0;
     puts("Looking for wifi.txt creds on internal flash");
