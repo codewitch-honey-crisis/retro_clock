@@ -99,7 +99,7 @@ void main_wifi_on_paint(surface_t& destination, const srect16& clip, void* state
 void time_update() {
     time_t time_offs = time_now==0?0:(time_t)(time_now + time_offset);
     tm tim = *localtime(&time_offs);
-    bool dot = 0 == (time_offs & 1);
+    bool dot = 0 == (time_now & 1);
     if (dot) {
         if (!time_military) {
             if (tim.tm_hour >= 12) {
@@ -290,8 +290,6 @@ static void clock_app(void) {
                 timeval tv;
                 gettimeofday(&tv,NULL);
                 time_now = (time_t)tv.tv_sec;
-            }
-            if(time_old/60!=time_now/60) {
                 time_update();
             }
             if (time_old != time_now) {
