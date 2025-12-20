@@ -197,5 +197,149 @@ static bool time_military = false
 
 The `time_buffer` field holds a string with the current time as text. The `time_offset` field holds the number of seconds offset from UTC. The `time_old` holds the previous time before the most recent update, while `time_now` hold the current time. These two allow for a differential test to see if the time has changed. `time_military` indicates whether or not the time is 24-hour (military time).
 
+Next up is the part of our code that paints the WiFi icon. It paints it in the ghost color or the face color depending if the WiFi is active or not:
 
+```cpp
+bitmap<alpha_pixel<4>> wifi_icon;
+void main_wifi_on_paint(surface_t& destination, const srect16& clip, void* state) {
+    bool wifi_enabled = true;
+    if(time_now>0) {
+        wifi_enabled = ntp_syncing();
+    }
+    draw::icon(destination,spoint16::zero(),wifi_icon,wifi_enabled?text_color:ghost_color);
+}
+```
 
+Here, `wifi_icon` is a `bitmap` with a 4-bit (16 values) alpha transparency map. This is used by the `draw::icon()` facility in GFX to render the icon at the indicated position (0,0) or the top left of the `main_wifi` control. Note that when `time_now` is 0 that means we're doing the initial WiFi negotation and connection process. 
+
+The next bit of code handles updating the UI with the value of `time_now`:
+
+```cpp
+void time_update() {
+    time_t time_offs = time_now==0?0:(time_t)(time_now + time_offset);
+    tm tim = *localtime(&time_offs);
+    bool dot = 0 == (time_now & 1);
+    if (dot) {
+        if (!time_military) {
+            if (tim.tm_hour >= 12) {
+                strftime(time_buffer, sizeof(time_buffer), "%I:%M.", &tim);
+            } else {
+                strftime(time_buffer, sizeof(time_buffer), "%I:%M", &tim);
+            }
+            if (*time_buffer == '0') {
+                *time_buffer = '!';
+            }
+        } else {
+            strftime(time_buffer, sizeof(time_buffer), "%H:%M", &tim);
+        }
+    } else {
+        if (!time_military) {
+            if (tim.tm_hour >= 12) {
+                strftime(time_buffer, sizeof(time_buffer), "%I %M.", &tim);
+            } else {
+                strftime(time_buffer, sizeof(time_buffer), "%I %M", &tim);
+            }
+            if (*time_buffer == '0') {
+                *time_buffer = '!';
+            }
+        } else {
+            strftime(time_buffer, sizeof(time_buffer), "%H %M", &tim);
+        }
+    }
+    main_text.text(time_buffer);
+}
+```
+This routine takes the time and converts it to the appropriate string based on 24 hour/military time settings and adjusting for the `time_offset`. Note that when `time_now` is 0, again this is a special case where we're syncing. Above we don't apply the offset in that situation. One thing we do for 12 hour time is convert any leading zero to a `!` so that the segment doesn't show up, `!` being a special character for the font, that's a space exactly one digit in width. You may have noticed we set the `main_text` control using `time_buffer` rather than directly. UIX and GFX don't like to allocate memory unless you tell them to. When you give a label control a pointer to a string, it doesn't copy the memory. It points right at the memory you gave it - in this case `text_buffer`. That keeps things frugal.
+
+Now we have a little helper function that creates a floating point rectangle out of an unsigned rectangle and an aspect ratio. This is so we can scale the wifi icon without distorting its aspect ratio:
+```cpp
+static rectf correct_aspect(const rect16& r, float aspect) {
+    rect16 result = r;
+    if (aspect>=1.f) {
+        result.y2 /= aspect;
+    } else {
+        result.x2 *= aspect;
+    }
+    return (rectf)result;
+}
+```
+
+While we could directly render SVG to the screen as needed, SVGs are not able to be rendered in different colors, because they themselves are color images. However, our WiFi icon is strictly black and white. We can leverage that by creating an *alpha transparency map* - a bitmap where each pixel indicates how opaque the draw should be at that position. We can then use that map to draw in any color we give it. The next routine handles creating one of these alpha transparency maps, `wifi_icon` from the SVG. To render that SVG we created a `bitmap`, bound a vector `canvas` to it, and then rendered the SVG contents using that.
+
+```cpp
+static bool create_wifi_icon(uint16_t icon_size) {
+    // create a new bitmap in 4-bit grayscale
+    auto bmp = create_bitmap<gsc_pixel<4>>({icon_size,icon_size});
+    if(bmp.begin()==nullptr) {
+        // out of memory
+        return false;
+    }
+    // fill with white
+    bmp.fill(bmp.bounds(),gsc_pixel<4>(15));
+    // assign the bitmap array entry to the bitmap's buffer
+    canvas cvs(bmp.dimensions());
+    if(gfx_result::success!=cvs.initialize()) {
+        // out of memory
+        free(bmp.begin());
+        return false;
+    }
+    // link the canvas and the bitmap so the canvas can draw on it
+    if(gfx_result::success!=draw::canvas(bmp,cvs)) {
+        // can't imagine why this would fail
+        free(bmp.begin());
+        return false;
+    }
+    sizef cps = connectivity_wifi_dimensions;
+    // scale it
+    gfx::rectf corrected = correct_aspect(bmp.bounds(), cps.aspect_ratio());
+    // center it
+    corrected.center_inplace((gfx::rectf)bmp.bounds());
+    // create a transformation matrix using it to fit to the bounding box
+    matrix fit = matrix::create_fit_to(cps,corrected);
+    connectivity_wifi.seek(0); // make sure we're at the beginning
+    if(gfx_result::success!=cvs.render_svg(connectivity_wifi,fit)) {
+        puts("Error rasterizing SVG");
+        goto error;
+    }
+    cvs.deinitialize();
+    // invert, because it's black on white, but we need an alpha transparency map
+    for(int y = 0;y<bmp.dimensions().height;++y) {
+        for(int x = 0;x<bmp.dimensions().width;++x) {
+            point16 pt(x,y);
+            decltype(bmp)::pixel_type px;
+            bmp.point(pt,&px);
+            // get the channel color value and invert it by subtracting from its maximum allowable value
+            px.channel<0>(decltype(px)::channel_by_index<0>::max-px.channel<0>());
+            bmp.point(pt,px);
+        }    
+    }
+    // wrap the memory we just converted with an alpha transparency map.
+    wifi_icon = bitmap<decltype(wifi_icon)::pixel_type>(bmp.dimensions(),bmp.begin());
+    return true;
+error:
+    if(bmp.begin()!=nullptr) {
+        free(bmp.begin());
+    }
+    puts("Error creating WiFi icon");
+    return false;
+}
+```
+
+Now a segue into a bit of NTP handling. The following is a callback method that reports the new time whenever it gets updated via NTP. Here we just report it, update our time values, and invalidate the `main_wifi` control to force it to repaint.
+
+```cpp
+void ntp_on_sync(time_t val, void* state) {
+    puts("Time synced");
+    time_old = time_now;
+    time_now = val;
+    main_wifi.invalidate();
+}
+```
+
+Next up we have some state to hold our WiFi info, including the SSID and password of the access point, and state where we determine whether or not it's connected. Again we keep the old value so we can do a differenetial comparison to be notified when the state changes:
+```cpp
+static char wifi_ssid[65];
+static char wifi_pass[129];
+static bool wifi_connected_old = false;
+static bool wifi_connected = false;
+```

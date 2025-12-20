@@ -106,20 +106,15 @@ void time_update() {
     }
     main_text.text(time_buffer);
 }
-void ntp_on_sync(time_t val, void* state) {
-    puts("Time synced");
-    time_old = time_now;
-    time_now = val;
-    main_wifi.invalidate();
-}
-static gfx::rectf correct_aspect(const gfx::rect16& r, float aspect) {
+
+static rectf correct_aspect(const rect16& r, float aspect) {
     rect16 result = r;
     if (aspect>=1.f) {
         result.y2 /= aspect;
     } else {
         result.x2 *= aspect;
     }
-    return (gfx::rectf)result;
+    return (rectf)result;
 }
 static bool create_wifi_icon(uint16_t icon_size) {
     // create a new bitmap in 4-bit grayscale
@@ -144,12 +139,14 @@ static bool create_wifi_icon(uint16_t icon_size) {
         return false;
     }
     sizef cps = connectivity_wifi_dimensions;
+    // scale it
     gfx::rectf corrected = correct_aspect(bmp.bounds(), cps.aspect_ratio());
+    // center it
     corrected.center_inplace((gfx::rectf)bmp.bounds());
+    // create a transformation matrix using it to fit to the bounding box
     matrix fit = matrix::create_fit_to(cps,corrected);
-    const_buffer_stream& stm = connectivity_wifi;
-    stm.seek(0); // make sure we're at the beginning
-    if(gfx_result::success!=cvs.render_svg(stm,fit)) {
+    connectivity_wifi.seek(0); // make sure we're at the beginning
+    if(gfx_result::success!=cvs.render_svg(connectivity_wifi,fit)) {
         puts("Error rasterizing SVG");
         goto error;
     }
@@ -160,10 +157,12 @@ static bool create_wifi_icon(uint16_t icon_size) {
             point16 pt(x,y);
             decltype(bmp)::pixel_type px;
             bmp.point(pt,&px);
+            // get the channel color value and invert it by subtracting from its maximum allowable value
             px.channel<0>(decltype(px)::channel_by_index<0>::max-px.channel<0>());
             bmp.point(pt,px);
         }    
     }
+    // wrap the memory we just converted with an alpha transparency map.
     wifi_icon = bitmap<decltype(wifi_icon)::pixel_type>(bmp.dimensions(),bmp.begin());
     return true;
 error:
@@ -173,10 +172,15 @@ error:
     puts("Error creating WiFi icon");
     return false;
 }
-
+void ntp_on_sync(time_t val, void* state) {
+    puts("Time synced");
+    time_old = time_now;
+    time_now = val;
+    main_wifi.invalidate();
+}
 static char wifi_ssid[65];
 static char wifi_pass[129];
-static bool wifi_old_connected = false;
+static bool wifi_connected_old = false;
 static bool wifi_connected = false;
 static void clock_app(void) {
     time_offset = 0;
@@ -236,7 +240,7 @@ static void clock_app(void) {
                 break;
             case WIFI_CONNECTED:
                 wifi_connected = true;
-                if (!wifi_old_connected) {
+                if (!wifi_connected_old) {
                     main_wifi.invalidate();
                     ntp_on_sync_callback(ntp_on_sync, nullptr);
                     ntp_init();
@@ -249,7 +253,7 @@ static void clock_app(void) {
             default:
                 break;
         }
-        wifi_old_connected = wifi_connected;
+        wifi_connected_old = wifi_connected;
 
         if (xTaskGetTickCount() > (ticks_wdt + pdMS_TO_TICKS(200))) {
             ticks_wdt = xTaskGetTickCount();
