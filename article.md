@@ -343,3 +343,147 @@ static char wifi_pass[129];
 static bool wifi_connected_old = false;
 static bool wifi_connected = false;
 ```
+
+Now we're on to the real meat - the clock application logic itself. It's not actually that complicated, but there's a lot to cover here all at once so I'll break it down into parts. It should be noted that in addition to the clock application mode, there is also the configuration portal mode, so we have different routines each one, in case you're wondering why this isn't the entry point:
+
+```cpp
+static void clock_app(void) {
+    time_offset = 0;
+    char buf[65];
+    if(config_get_value("tzoffset",0,buf,sizeof(buf)-1)) {
+        sscanf(buf,"%ld",&time_offset);
+    }
+    time_military = config_get_value("military",0,nullptr,0);
+```
+
+The first thing we do is get some configuration values. If `tzoffset` is preset (meaning */spiffs/tzoffset.txt* exists) it will parse that into the `time_offset` value. If `military` exists, it sets the `time_military` flag. We could have called it 24-hour format but there would have been cases where I would have had to prefix "24" with something to make it a legal identifier. I chose not to muddy the water with that, so I chose to use "military" nomenclature instead.
+
+I've made the interface scalable, such that it will size itself to the display's resolution. To that end, we must compute the appropriate size for the clock face font. We do that next by initializing `main_text_font` and then steadily decreasing the size of it until it fits within 80% of the display's width given the "88:88." text (or the appropriate variant) we use for the ghosted segments.
+```cpp
+main_text_font.initialize();
+// find the appropriate size for the font
+text_info face_ti(time_military?face_ghost_text_mil:face_ghost_text, main_text_font);
+size16 face_area;
+main_text_font.measure((uint16_t)-1, face_ti, &face_area);
+while (face_area.width == 0 || face_area.width > (LCD_WIDTH * .8)) {
+    main_text_font.size(main_text_font.line_height() - 1, font_size_units::px);
+    main_text_font.measure((uint16_t)-1, face_ti, &face_area);
+}
+```
+
+Next we call the wifi icon rasterization routine covered prior:
+
+```cpp
+// rasterize the wifi icon
+create_wifi_icon(LCD_WIDTH*.12);
+```
+
+Now it's time to lay out the controls and configure them. In turn we set the bounding box and "properties" of the `main_ghost` (the background segments) label, the `main_text` label (here used for the face segments that are "on"), and the `main_wifi` painter box. We register each of the controls with the screen after setting them up. Finally, we set the active screen for the `lcd` object to the `main_screen`:
+
+```cpp
+main_screen.background_color(back_color);
+main_ghost.bounds(srect16(spoint16::zero(), (ssize16)face_area).center(main_screen.bounds()));
+main_ghost.padding({0, 0});
+main_ghost.text_justify(uix_justify::top_left);
+main_ghost.color(ghost_color);
+main_ghost.text(face_ti.text,face_ti.text_byte_count);
+main_ghost.font(main_text_font);
+main_screen.register_control(main_ghost);
+
+main_text.bounds(srect16(spoint16::zero(), (ssize16)face_area).center(main_screen.bounds()));
+main_text.padding({0, 0});
+main_text.text_justify(uix_justify::top_left);
+main_text.color(text_color);
+main_text.font(main_text_font);
+main_screen.register_control(main_text);
+// set the initial time value
+time_update();
+
+main_wifi.bounds(srect16(spoint16::zero(),(ssize16)wifi_icon.dimensions()).offset(LCD_WIDTH-wifi_icon.dimensions().width,0));
+main_wifi.on_paint_callback(main_wifi_on_paint);
+main_screen.register_control(main_wifi);
+
+lcd.active_screen(main_screen);
+```
+
+The next bit is some state we use in our application's primary loop:
+
+```cpp
+TickType_t ticks_flash = xTaskGetTickCount();
+TickType_t ticks_wdt = xTaskGetTickCount();
+TickType_t ticks_time_retry = 0;
+TickType_t ticks_time = xTaskGetTickCount();
+```
+These are timestamps we use for when the face needs to flash during initial sync, for resetting the ESP-IDF watchdog timer to prevent a reboot, for retrying the NTP sync if the initial sync fails, and for counting off each second so we limit the amount we actually update the time, respectively.
+
+Next is our main application loop for the clock, where first we keep the WiFi connection state and NTP syncing up to date:
+
+```cpp
+while (1) {
+    switch (wifi_status()) {
+        case WIFI_DISCONNECTED:
+            fputs("Connecting to ",stdout);
+            puts(wifi_ssid);
+            wifi_init(wifi_ssid, wifi_pass);
+            main_wifi.invalidate();
+            break;
+        case WIFI_CONNECTED:
+            wifi_connected = true;
+            if (!wifi_connected_old) {
+                main_wifi.invalidate();
+                ntp_on_sync_callback(ntp_on_sync, nullptr);
+                ntp_init();
+                ticks_time_retry = xTaskGetTickCount();
+            }
+            break;
+        case WIFI_CONNECT_FAILED:
+            wifi_restart();
+            break;
+        default:
+            break;
+    }
+    wifi_connected_old = wifi_connected;
+```
+
+Now we pop off various "events" when certain periods elapse:
+
+```cpp
+if (xTaskGetTickCount() > (ticks_wdt + pdMS_TO_TICKS(200))) {
+    ticks_wdt = xTaskGetTickCount();
+    vTaskDelay(5);
+}
+if (time_now == 0) {
+    if (xTaskGetTickCount() > (ticks_flash + pdMS_TO_TICKS(500))) {
+        ticks_flash = xTaskGetTickCount();
+        main_text.visible(!main_text.visible());
+        time_update();
+    }
+    if(xTaskGetTickCount() > (ticks_time_retry+pdMS_TO_TICKS(30 * 1000))) {
+        ticks_time_retry = xTaskGetTickCount();
+        puts("Retry NTP sync");
+        ntp_sync();
+    }
+} else {
+    if (xTaskGetTickCount() > (ticks_time + pdMS_TO_TICKS(1000))) {
+        time_old = time_now;
+        ticks_time = xTaskGetTickCount();
+        timeval tv;
+        gettimeofday(&tv,NULL);
+        time_now = (time_t)tv.tv_sec;
+        time_update();
+    }
+    main_text.visible(true);
+}
+```
+The first one feeds the watchdog timer by calling `vTaskDelay(5)` every 200ms or so to prevent the watchdog from causing a reboot.
+Next we handle the case where we're still syncing (`time_now` is zero) wherein every 500ms we set the face text to visible or not, causing a flashing effect, after which we retry the NTP sync every 30 seconds.
+
+The next one handles post sync operation (`time_now` is non-zero) where we first update the time every second, and then we just ensure `main_text` is visible in case it was off because we were flashing it before.
+
+For the final part of the application loop we just poll the `config_input` subsystem to enter the config portal, and keep the `lcd` object up to date.
+```cpp
+config_input_update();
+lcd.update();
+```
+That's the entire clock operation. Now we get to move on to some portal magic.
+

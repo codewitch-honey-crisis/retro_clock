@@ -186,7 +186,6 @@ static void clock_app(void) {
     time_offset = 0;
     char buf[65];
     if(config_get_value("tzoffset",0,buf,sizeof(buf)-1)) {
-        time_offset = 0;
         sscanf(buf,"%ld",&time_offset);
     }
     time_military = config_get_value("military",0,nullptr,0);
@@ -217,6 +216,7 @@ static void clock_app(void) {
     main_text.color(text_color);
     main_text.font(main_text_font);
     main_screen.register_control(main_text);
+    // set the initial time value
     time_update();
 
     main_wifi.bounds(srect16(spoint16::zero(),(ssize16)wifi_icon.dimensions()).offset(LCD_WIDTH-wifi_icon.dimensions().width,0));
@@ -224,7 +224,6 @@ static void clock_app(void) {
     main_screen.register_control(main_wifi);
 
     lcd.active_screen(main_screen);
-    lcd.update();  // set the background so we can draw the font all at once later
 
     TickType_t ticks_flash = xTaskGetTickCount();
     TickType_t ticks_wdt = xTaskGetTickCount();
@@ -265,23 +264,21 @@ static void clock_app(void) {
                 main_text.visible(!main_text.visible());
                 time_update();
             }
-            if(xTaskGetTickCount() > (ticks_time_retry+pdMS_TO_TICKS(1000*30))) {
+            if(xTaskGetTickCount() > (ticks_time_retry+pdMS_TO_TICKS(30 * 1000))) {
                 ticks_time_retry = xTaskGetTickCount();
                 puts("Retry NTP sync");
                 ntp_sync();
             }
         } else {
             if (xTaskGetTickCount() > (ticks_time + pdMS_TO_TICKS(1000))) {
+                time_old = time_now;
                 ticks_time = xTaskGetTickCount();
                 timeval tv;
                 gettimeofday(&tv,NULL);
                 time_now = (time_t)tv.tv_sec;
                 time_update();
             }
-            if (time_old != time_now) {
-                time_old = time_now;
-                main_text.visible(true);
-            }
+            main_text.visible(true);
         }
         config_input_update();
         lcd.update();
