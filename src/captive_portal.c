@@ -264,6 +264,7 @@ static void parse_url_and_apply(const char* url) {
     bool set_creds = false;
     bool set_tz = false;
     bool set_military = false;
+    bool configured = false;
     if (query != NULL) {
         while (1) {
             query = httpd_crack_query(query, name, value);
@@ -285,6 +286,9 @@ static void parse_url_and_apply(const char* url) {
             if(0==strcmp("military",name)) {
                 set_military=true;
                 strncpy(military,value,63);
+            }
+            if(0==strcmp("configure",name)) {
+                configured=true;
             }
         }
     }
@@ -313,9 +317,11 @@ static void parse_url_and_apply(const char* url) {
         config_clear_values("military");
         if(!restart) restart=set_military!=old_military;
     }
-    if(restart) {
-        puts("Configuration saved. Restarting");
-        esp_restart();
+    if(configured) {
+        if(restart) {
+            puts("Configuration saved. Restarting");
+            esp_restart();
+        }
     }
 }
 static esp_err_t httpd_err_handler(httpd_req_t *req, httpd_err_code_t error) {

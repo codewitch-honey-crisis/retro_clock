@@ -182,7 +182,7 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="submit-button">Save Configuration</button>
+                <button type="submit" name="configure" class="submit-button">Save Configuration</button>
             </form>
         </div>
     </body>
