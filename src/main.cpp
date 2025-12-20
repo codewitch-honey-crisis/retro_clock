@@ -31,21 +31,11 @@ gfx::const_buffer_stream& text_font = telegrama_render;
 #define CONNECTIVITY_IMPLEMENTATION
 #include "assets/connectivity.hpp"
 
-static void spiffs_init(void) {
-    esp_vfs_spiffs_conf_t conf;
-    memset(&conf, 0, sizeof(conf));
-    conf.base_path = "/spiffs";
-    conf.partition_label = NULL;
-    conf.max_files = 5;
-    conf.format_if_mount_failed = true;
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-}
-
 using namespace gfx;
 using namespace uix;
 
-using label_t = uix::label<surface_t>;
-using icon_t = uix::painter<surface_t>;
+using label_t = label<surface_t>;
+using icon_t = painter<surface_t>;
 using qr_t = qrcode<surface_t>;
 
 screen_t main_screen;
@@ -66,6 +56,7 @@ static const constexpr char* face_ghost_text_mil = "88:88";
 #else
 static const constexpr char* face_back_text = "\x7E\x7E:\x7E\x7E.";
 #endif
+
 static char time_buffer[7];
 static int32_t time_offset = 0;
 static time_t time_old = 0;
@@ -377,6 +368,17 @@ static void gen_device_id() {
     config_clear_values("deviceid");
     config_add_value("deviceid",id);
 }
+
+static void spiffs_init(void) {
+    esp_vfs_spiffs_conf_t conf;
+    memset(&conf, 0, sizeof(conf));
+    conf.base_path = "/spiffs";
+    conf.partition_label = NULL;
+    conf.max_files = 5;
+    conf.format_if_mount_failed = true;
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+}
+
 extern "C" void app_main(void) {
     lcd_init();
     spiffs_init();

@@ -91,3 +91,51 @@ The `/www` folder contains web content that is used by ClASP to generate `/inclu
 
 Let's start with `/src/main.cpp`:
 
+First we include a bunch of files, many of which were mentioned above:
+
+```cpp
+#include "esp_check.h"
+#include "esp_idf_version.h"
+#include "esp_spiffs.h"
+#include "esp_vfs_fat.h"
+#include "esp_random.h"
+#include <sys/time.h>   
+#include <time.h>
+#include <string.h>
+#include <stdio.h>
+#include "config.h"
+#include "config_input.h"
+#include "captive_portal.h"
+#include "ui.hpp"
+#include "lcd.hpp"
+#include "ntp.h"
+#include "wifi.h"
+```
+Things get a little more interesting when we include the assets:
+
+```cpp
+// from https://www.keshikan.net/fonts-e.html
+#ifdef SEG14
+#define DSEG14CLASSIC_REGULAR_IMPLEMENTATION
+#include "assets/DSEG14Classic_Regular.hpp"
+static gfx::const_buffer_stream clock_font(DSEG14Classic_Regular, sizeof(DSEG14Classic_Regular));
+#else
+#define DSEG7CLASSIC_REGULAR_IMPLEMENTATION
+#include "assets/DSEG7Classic_Regular.hpp"
+static gfx::const_buffer_stream clock_font(DSEG7Classic_Regular, sizeof(DSEG7Classic_Regular));
+#endif
+// from https://fontsquirrel.com
+#define TELEGRAMA_RENDER_IMPLEMENTATION
+#include "assets/telegrama_render.hpp"
+gfx::const_buffer_stream& text_font = telegrama_render;
+#define CONNECTIVITY_IMPLEMENTATION
+#include "assets/connectivity.hpp"
+```
+Here you can define `SEG14` to use 14-segment LCD digits instead of the default 7-segment indicators.
+
+Aside from that you'll notice `_IMPLEMENTATION` defines. What this is is an accounting for the fact that these files contain both the header and the implementation in a single file. It makes them easier to generate and to haul around between projects. However, to use them you must declare the associated define before including the file, in exactly one translation unit in your project. If you do not, it will not link. Aside from that, you use them like a normal header anywhere else.
+
+There are several mentions of `const_buffer_stream` above. These wrap a static array in a stream. We don't use `<iostream>` because we don't rely on the STL. As such I have my own streams implementation as part of my embedded ecosystem. Here we're using it to wrap the font arrays so they can be consumed by GFX, and once again to alias the `telegram_render` font into `text_font` to make that easy to swap out.
+
+The connectivity.hpp contains an SVG for a WiFi icon as a string.
+
