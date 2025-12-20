@@ -308,14 +308,7 @@ static void portal_on_connect(void* state) {
     main_text.text("Configure:");
     main_qr.color(ucolor_t::dark_blue);
     main_qr.text(portal_address);
-    TickType_t ticks_wdt = xTaskGetTickCount();
-    while (1) {
-        if (xTaskGetTickCount() > (ticks_wdt + pdMS_TO_TICKS(200))) {
-            ticks_wdt = xTaskGetTickCount();
-            vTaskDelay(5);
-        }
-        lcd.update();
-    }
+    lcd.update();
 }
 char qr_text[513];
 static void portal_app(void) {
@@ -362,6 +355,7 @@ static void portal_app(void) {
     lcd.update();
 
 }
+// generate a friendly AP password/identifier for this device
 static void gen_device_id() {
     char id[16];
     static const char* vowels = "aeiou";
