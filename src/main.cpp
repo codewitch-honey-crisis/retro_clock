@@ -54,7 +54,8 @@ constexpr static const auto text_color = ucolor_t::black;
 static const constexpr char* face_ghost_text = "88:88.";
 static const constexpr char* face_ghost_text_mil = "88:88";
 #else
-static const constexpr char* face_back_text = "\x7E\x7E:\x7E\x7E.";
+static const constexpr char* face_ghost_text = "\x7E\x7E:\x7E\x7E.";
+static const constexpr char* face_ghost_text_mil = "\x7E\x7E:\x7E\x7E";
 #endif
 
 static char time_buffer[7];

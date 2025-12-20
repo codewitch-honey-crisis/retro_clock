@@ -139,3 +139,50 @@ There are several mentions of `const_buffer_stream` above. These wrap a static a
 
 The connectivity.hpp contains an SVG for a WiFi icon as a string.
 
+Next up, some of our UI and graphics declarations and objects
+
+```cpp
+using namespace gfx;
+using namespace uix;
+
+using label_t = label<surface_t>;
+using icon_t = painter<surface_t>;
+using qr_t = qrcode<surface_t>;
+
+screen_t main_screen;
+label_t main_text;
+label_t main_ghost;
+icon_t main_wifi;
+qr_t main_qr;
+
+tt_font main_text_font(clock_font, LCD_HEIGHT, font_size_units::px);
+```
+
+First we import `gfx` and `uix` namespaces since we use them frequently here.
+
+Next we have some type aliases for the UI elements we'll be using. `surface_t` represents the screen's drawing surface, which is used to generate bitmaps to send the display. Every UIX control takes one as its first (or perhaps only) template argument. Specifically we have one for labels (used for text), one for icons (used for the wifi indicator), and one for the qr codes used for the configuration portal. Lastly, we have our `main_text_font` which is used for the main display elements, like the clock face, or the actual text during configuration. Initially it's set to very large (`LCD_HEIGHT`) and set to the `clock_font` but one or both of those will change later.
+
+Next, some colors:
+```cpp
+constexpr static const auto back_color = color_t::white.blend(color_t::black, 0.5f);
+constexpr static const auto ghost_color = ucolor_t::white.blend(ucolor_t::black, 0.42f);
+constexpr static const auto text_color = ucolor_t::black;
+```
+Here we have the background color of the screen, the ghost color for the LCD segments, and the primary text color. You can see the first two were created by blending white with black. You'll note it's using the `color_t` and `ucolor_t` enumerations declared in `/include/ui.hpp`. They're two different types, because they're two different types of pixel format. The `back_color` is in the screen's native format (RGB565), while the other colors are in UIX format (RGBA8888).
+
+Now we have some strings for the text that represents the ghosted segments:
+
+````cpp
+
+#ifndef SEG14
+static const constexpr char* face_ghost_text = "88:88.";
+static const constexpr char* face_ghost_text_mil = "88:88";
+#else
+static const constexpr char* face_ghost_text = "\x7E\x7E:\x7E\x7E.";
+static const constexpr char* face_ghost_text_mil = "\x7E\x7E:\x7E\x7E";
+#endif
+```
+
+They're different for the 14-seg LCD version.
+
+
