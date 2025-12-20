@@ -306,6 +306,7 @@ static void portal_on_connect(void* state) {
         return;
     }
     main_text.text("Configure:");
+    main_qr.color(ucolor_t::dark_blue);
     main_qr.text(portal_address);
     TickType_t ticks_wdt = xTaskGetTickCount();
     while (1) {
@@ -355,6 +356,7 @@ static void portal_app(void) {
         return;
     }
     main_qr.text(qr_text);
+    main_qr.color(ucolor_t::black);
     main_screen.register_control(main_qr);
     lcd.active_screen(main_screen);
     lcd.update();
