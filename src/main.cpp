@@ -63,6 +63,7 @@ static int32_t time_offset = 0;
 static time_t time_old = 0;
 static time_t time_now = 0;
 static bool time_military = false;
+
 bitmap<alpha_pixel<4>> wifi_icon;
 void main_wifi_on_paint(surface_t& destination, const srect16& clip, void* state) {
     bool wifi_enabled = true;

@@ -172,7 +172,7 @@ Here we have the background color of the screen, the ghost color for the LCD seg
 
 Now we have some strings for the text that represents the ghosted segments:
 
-````cpp
+```cpp
 
 #ifndef SEG14
 static const constexpr char* face_ghost_text = "88:88.";
@@ -184,5 +184,18 @@ static const constexpr char* face_ghost_text_mil = "\x7E\x7E:\x7E\x7E";
 ```
 
 They're different for the 14-seg LCD version.
+
+Now here we hold our time information:
+
+```cpp
+static char time_buffer[7];
+static int32_t time_offset = 0;
+static time_t time_old = 0;
+static time_t time_now = 0;
+static bool time_military = false
+```
+
+The `time_buffer` field holds a string with the current time as text. The `time_offset` field holds the number of seconds offset from UTC. The `time_old` holds the previous time before the most recent update, while `time_now` hold the current time. These two allow for a differential test to see if the time has changed. `time_military` indicates whether or not the time is 24-hour (military time).
+
 
 
