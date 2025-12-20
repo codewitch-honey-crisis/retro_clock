@@ -3,11 +3,6 @@
 #include "esp_spiffs.h"
 #include "esp_vfs_fat.h"
 #include "esp_random.h"
-// CORE2 needs its AXP192 chip initialized
-#ifdef M5STACK_CORE2
-#include <esp_i2c.hpp>        // i2c initialization
-#include <m5core2_power.hpp>  // AXP192 power management (core2)
-#endif
 #include <sys/time.h>   
 #include <time.h>
 #include <string.h>
@@ -16,7 +11,6 @@
 #include "config_input.h"
 #include "captive_portal.h"
 #include "ui.hpp"
-#include "vicon.hpp"
 #include "lcd.hpp"
 #include "ntp.h"
 #include "wifi.h"
@@ -45,16 +39,6 @@ static void spiffs_init(void) {
     conf.max_files = 5;
     conf.format_if_mount_failed = true;
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-}
-
-static void power_init(void) {
-#ifdef M5STACK_CORE2
-    // for AXP192 power management
-    static esp_idf::m5core2_power power(esp_idf::esp_i2c<1, 21, 22>::instance);
-    // draw a little less power
-    power.initialize();
-    power.lcd_voltage(3.0);
-#endif
 }
 
 using namespace gfx;
@@ -394,7 +378,6 @@ static void gen_device_id() {
     config_add_value("deviceid",id);
 }
 extern "C" void app_main(void) {
-    power_init();
     lcd_init();
     spiffs_init();
     config_input_init();

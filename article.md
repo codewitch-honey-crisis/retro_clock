@@ -86,3 +86,8 @@ The `/www` folder contains web content that is used by ClASP to generate `/inclu
 
 - `/www/default.css` contains the light-mode stylesheet used for the configuration portal.
 - `/www/index.clasp` contains the dynamically rendered portal page. It is transformed into C/++ using [ClASP](https://github.com/codewitch-honey-crisis/clasp).
+
+#### main.cpp
+
+Let's start with `/src/main.cpp`:
+
