@@ -247,6 +247,7 @@ static void clock_app(void) {
 
     TickType_t ticks_flash = xTaskGetTickCount();
     TickType_t ticks_wdt = xTaskGetTickCount();
+    TickType_t ticks_time_retry = 0;
     TickType_t ticks_time = xTaskGetTickCount();
     while (1) {
         switch (wifi_status()) {
@@ -262,6 +263,7 @@ static void clock_app(void) {
                     main_wifi.invalidate();
                     ntp_on_sync_callback(ntp_on_sync, nullptr);
                     ntp_init();
+                    ticks_time_retry = xTaskGetTickCount();
                 }
                 break;
             case WIFI_CONNECT_FAILED:
@@ -281,6 +283,11 @@ static void clock_app(void) {
                 ticks_flash = xTaskGetTickCount();
                 main_text.visible(!main_text.visible());
                 time_update();
+            }
+            if(xTaskGetTickCount() > (ticks_time_retry+pdMS_TO_TICKS(1000*30))) {
+                ticks_time_retry = xTaskGetTickCount();
+                puts("Retry NTP sync");
+                ntp_sync();
             }
         } else {
             if (xTaskGetTickCount() > (ticks_time + pdMS_TO_TICKS(1000))) {

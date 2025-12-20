@@ -37,3 +37,6 @@ void ntp_on_sync_callback(ntp_on_sync_t callback, void* state) {
 bool ntp_syncing(void) {
     return SNTP_SYNC_STATUS_COMPLETED!=sntp_get_sync_status();
 }
+bool ntp_sync(void) {
+    return esp_sntp_restart();
+}

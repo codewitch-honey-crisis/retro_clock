@@ -12,6 +12,7 @@ typedef void(*ntp_on_sync_t)(time_t time, void* state);
 void ntp_init(void);
 void ntp_on_sync_callback(ntp_on_sync_t callback, void* state);
 bool ntp_syncing(void);
+bool ntp_sync(void);
 #ifdef __cplusplus
 }
 #endif
