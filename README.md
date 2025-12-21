@@ -2,9 +2,10 @@
 
 ![Clock screen](https://github.com/user-attachments/assets/50f5bc57-28e3-4b10-8506-20e38ac3a402 "Clock screen")
 
-(functional, but a work in progress)
 
 A retro digital clock that uses NTP to keep time. It is configurable via a portal it exposes when you start it.
+
+An article covering the code is provider [here](https://github.com/codewitch-honey-crisis/retro_clock/blob/main/article.md)
 
 It was primarily designed for the TTGO T1 Display, but I will be adding support for more devices.
 
