@@ -1120,3 +1120,272 @@ static bool www_start(void) {
 }
 ```
 `HTTPD_RESPONSE_HANDLER_COUNT` is provided by ClASP, as is the `httpd_response_handlers` array, so it makes configuring the server as simple as looping through the handlers.
+
+The next routine stops the portal service:
+
+```c
+void captive_portal_end(void) {
+    if(dns_handle) {
+        stop_dns_server(dns_handle);
+        dns_handle = NULL;
+    }
+    if(httpd_handle!=NULL) {
+        httpd_stop(httpd_handle);
+        httpd_handle = NULL;
+    }
+    esp_netif_dhcpc_stop(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"));
+    wifi_deinit_softap();
+    esp_netif_destroy_default_wifi(wifi_ap);
+    nvs_flash_deinit();
+    esp_event_loop_delete_default();
+    esp_netif_deinit();
+    if(captive_portal_uri!=NULL) {
+        free(captive_portal_uri);
+        captive_portal_uri = NULL;
+    }
+}
+```
+
+These functions set the callbacks for when a connection is made to the AP or when a connection terminated:
+
+```c
+static captive_portal_callback_t captive_portal_on_sta_connect_fn = NULL;
+static void* captive_portal_on_sta_connect_state = NULL;
+void captive_portal_on_sta_connect(captive_portal_callback_t callback, void* state) {
+    captive_portal_on_sta_connect_fn = callback;
+    captive_portal_on_sta_connect_state = state;
+}
+static captive_portal_callback_t captive_portal_on_sta_disconnect_fn = NULL;
+static void* captive_portal_on_sta_disconnect_state = NULL;
+void captive_portal_on_sta_disconnect(captive_portal_callback_t callback, void* state) {
+    captive_portal_on_sta_disconnect_fn = callback;
+    captive_portal_on_sta_disconnect_state = state;
+}
+```
+
+The following monitors the DHCP server for connections and disconnections in order to fire the above callbacks:
+
+```c
+static wifi_sta_list_t dhcp_sta_list;
+void dhcp_monitor(void* arg) {
+    bool connected = false;
+    while(dns_handle!=NULL) {
+        vTaskDelay(5);
+        if(ESP_OK==esp_wifi_ap_get_sta_list(&dhcp_sta_list)) {
+            if(dhcp_sta_list.num>0) {
+                if(!connected) {
+                    connected = true;
+                    if(captive_portal_on_sta_connect_fn!=NULL) {
+                        captive_portal_on_sta_connect_fn(captive_portal_on_sta_connect_state);
+                    }
+                }
+            } else {
+                if(connected) {
+                    connected = false;
+                    if(captive_portal_on_sta_disconnect_fn!=NULL) {
+                        captive_portal_on_sta_disconnect_fn(captive_portal_on_sta_disconnect_state);
+                    }
+                }
+            }
+        }
+    }
+    vTaskDelete(NULL);
+}
+```
+
+`http_send_block()` is the core method for transfering data over the HTTP transport socket. It is used by ClASP generated response handlers to emit content:
+
+```c
+static void httpd_send_block(const char* data, size_t len, void* arg) {
+    if (!data || !len) {
+        return;
+    }
+    httpd_async_resp_arg_t* resp_arg = (httpd_async_resp_arg_t*)arg;
+    int fd = resp_arg->fd;
+    httpd_handle_t hd = (httpd_handle_t)resp_arg->hd;
+    httpd_socket_send(hd, fd, data, len, 0);
+}
+```
+
+The next method is used to send HTTP chunked encoded data over the HTTP transport:
+
+```c
+static void httpd_send_chunked(const char* buffer, size_t buffer_len,
+                        void* arg) {
+    char buf[64];
+    if (buffer && buffer_len) {
+        itoa(buffer_len, buf, 16);
+        strcat(buf, "\r\n");
+        httpd_send_block(buf, strlen(buf), arg);
+        httpd_send_block(buffer, buffer_len, arg);
+        httpd_send_block("\r\n", 2, arg);
+        return;
+    }
+    httpd_send_block("0\r\n\r\n", 5, arg);
+}
+```
+
+Now we have the expression method used by ClASP for handling `<%= =>` blocks:
+
+```c
+static void httpd_send_expr(const char* expr, void* arg) {
+    if (!expr || !*expr) {
+        return;
+    }
+    httpd_send_chunked(expr, strlen(expr), arg);
+}
+```
+
+Next up is the method we use in our request handler to crack the query string into name/value pairs:
+
+```c
+static const char* httpd_crack_query(const char* url_part, char* name,
+                                     char* value) {
+    if (url_part == NULL || !*url_part) return NULL;
+    const char start = *url_part;
+    if (start == '&' || start == '?') {
+        ++url_part;
+    }
+    size_t i = 0;
+    char* name_cur = name;
+    while (*url_part && *url_part != '=' && *url_part != '&') {
+        if (i < 64) {
+            *name_cur++ = *url_part;
+        }
+        ++url_part;
+        ++i;
+    }
+    *name_cur = '\0';
+    if (!*url_part || *url_part == '&') {
+        *value = '\0';
+        return url_part;
+    }
+    ++url_part;
+    i = 0;
+    char* value_cur = value;
+    while (*url_part && *url_part != '&') {
+        if (i < 64) {
+            *value_cur++ = *url_part;
+        }
+        ++url_part;
+        ++i;
+    }
+    *value_cur = '\0';
+    return url_part;
+}
+```
+
+The following decodes an URL encoded string:
+```c
+static char* httpd_url_decode(char* dst, size_t dstlen, const char* src) {
+    char a, b;
+    while (*src && dstlen) {
+        if ((*src == '%') && ((a = src[1]) && (b = src[2])) &&
+            (isxdigit(a) && isxdigit(b))) {
+            if (a >= 'a') a -= 'a' - 'A';
+            if (a >= 'A')
+                a -= ('A' - 10);
+            else
+                a -= '0';
+            if (b >= 'a') b -= 'a' - 'A';
+            if (b >= 'A')
+                b -= ('A' - 10);
+            else
+                b -= '0';
+            *dst++ = 16 * a + b;
+            dstlen--;
+            src += 3;
+        } else if (*src == '+') {
+            *dst++ = ' ';
+            dstlen--;
+            src++;
+        } else {
+            *dst++ = *src++;
+            dstlen--;
+        }
+    }
+    if (dstlen) {
+        *dst++ = '\0';
+    }
+    return dst;
+}
+```
+The following three methods get our portal's website URL, the credentials of the access point, and the AP address suitable for setting a QR code to, respectively:
+
+```c
+bool captive_portal_get_address(char* out_address,size_t out_address_length) {
+    if(dns_handle==NULL) {
+        return false;
+    }
+    strncpy(out_address,captive_portal_uri,out_address_length);
+    return true;
+}
+
+bool captive_portal_get_credentials(char* out_ssid,size_t out_ssid_length, char* out_pass,size_t out_pass_length) {
+    if(dns_handle==NULL) {
+        return false;
+    }
+    strncpy(out_ssid,wifi_ssid,out_ssid_length);
+    strncpy(out_pass,wifi_pass,out_pass_length);
+    return true;
+}
+bool captive_portal_get_ap_address(char* out_address,size_t out_address_length) {
+    if(dns_handle==NULL) {
+        return false;
+    }
+    // https://www.wi-fi.org/system/files/WPA3%20Specification%20v3.5.pdf (page 37)
+    //WIFI:T:WPA;S:<SSID>;P:<PASS>;;
+    strcpy(out_address, "WIFI:T:WPA;S:");
+    strcat(out_address, wifi_ssid);
+    strcat(out_address, ";P:");
+    strcat(out_address, wifi_pass);
+    strcat(out_address, ";;");
+    return true;
+}
+```
+
+That wraps up the configuration portal's supporting code, but let's segue into the `/www` folder in order to better understand `/include/httpd_content.h` and the handlers:
+
+We won't touch `/www/default.css` because it's just static content, except to say it gets compressed and then gets embedded as part of the `httpd_content_default_css()` generated handler.
+
+`/www/index.clasp` on the other hand, is far more interesting. I will be covering parts of it, as the entire thing is quite long due to the timezone information. ClASP pages work like classic Microsoft ASP except instead of VBScript or JScript in the backing code, it's C or C++. `<% %>` and `<%= %>` context switch from HTML or otherwise textual content to C/++ code.
+
+```asp
+<%@status code="200" text="OK"%>
+<%@header name="Content-Type" value="text/html; charset=utf-8"%><%
+```
+These two lines establish the HTTP response status line and any headers to emit aside from the generated Content-Encoding or Content-Length header - in this case `200 OK` and the `Content-Type` header. Finally there is a `<%` which indicates a context switch into the following C code:
+
+```c
+char ssid[65];
+char pass[129];
+ssid[0]='\0';
+pass[0]='\0';
+config_get_value("wifi",0,ssid,sizeof(ssid)-1);
+config_get_value("wifi",1,pass,sizeof(pass)-1);
+```
+
+Here we simply populate the `ssid` and `pass` variables with the contents of the "wifi" configuration values. We use them later.
+
+After that we context switch back to HTML, emit the `DOCTYPE` and a bunch of HTML that follows (omitted here):
+
+```asp
+%><!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        ...
+```
+
+Most of this is just HTML, but there are some context switches embedded in it, like for populating SSID and Password `textbox` inputs:
+
+```
+value="<%=ssid%>" 
+value="<%=pass%>"
+```
+
+Aside from that, it's just a `<form>` with several query parameters passed as HTTP GET. When we receive a request with the `configure` query parameter, we know to set the configuration values and reset the ESP32.
+
+That covers the important bits of the `/www` folder.
+
+
