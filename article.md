@@ -565,3 +565,94 @@ lcd.active_screen(main_screen);
 lcd.update();
 ```
 
+That's it for the portal, now we're just dealing with initialization and entry point mechanics.
+
+The password for the access point is not really for security. The only thing it prevents is someone hijacking your configuration portal from say, next door. It's not meant to be strong, or provide anything more than a cursory check against random people fiddling with your portal. What I've done is decided that this thing should be unique, but short-ish and friendly to remember.
+
+To that end, we use the ESP32s entropy source RNG and create a string with vowels and consonants and a number on the end, like "foozbart12". It then stores this as a deviceid configuration value.
+Presently we only use it as an AP password, but it could be used elsewhere because as I said, it's not really for securitry.
+
+```cpp
+// generate a friendly AP password/identifier for this device
+static void gen_device_id() {
+    char id[16];
+    static const char* vowels = "aeiou";
+    char tmp[2] = {0};
+    size_t len = esp_random()%4+7;
+    int salt = esp_random()%98+1;
+    bool vowel = esp_random()&1?true:false;
+    id[0]='\0';
+    for(int i = 0;i<len;++i) {
+        if(vowel) {
+            int idx = esp_random()%5;
+            tmp[0]=vowels[idx];
+        } else {
+            char ch = (esp_random()%26)+'a';
+            while(strchr(vowels,ch)) {
+                ch = (esp_random()%26)+'a';
+            }
+            tmp[0]=ch;
+        }
+        strcat(id,tmp);
+        if(!vowel) {
+            vowel=true;
+        } else {
+            vowel = esp_random()%10>6?true:false;
+        }
+    }
+    itoa(salt,id+strlen(id),10);
+    config_clear_values("deviceid");
+    config_add_value("deviceid",id);
+}
+```
+
+We have to initialize SPIFFS before we can do much.
+
+```cpp
+static void spiffs_init(void) {
+    esp_vfs_spiffs_conf_t conf;
+    memset(&conf, 0, sizeof(conf));
+    conf.base_path = "/spiffs";
+    conf.partition_label = NULL;
+    conf.max_files = 5;
+    conf.format_if_mount_failed = true;
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+}
+```
+
+In the entry point we do core initialization, generate the deviceid, and then determine if we need to enter the portal or the clock app.
+
+```cpp
+extern "C" void app_main(void) {
+    lcd_init();
+    spiffs_init();
+    config_input_init();
+    if(!config_get_value("deviceid",0,NULL,0)) {
+        gen_device_id();
+    }
+    bool cfg = config_get_value("configure",0,NULL,0);
+    main_screen.dimensions({LCD_WIDTH, LCD_HEIGHT});
+    if(cfg) {
+        portal_app();
+        return;
+    }
+    wifi_ssid[0] = 0;
+    wifi_pass[0] = 0;
+    puts("Looking for wifi.txt creds on internal flash");
+    bool has_creds = false;
+    has_creds = wifi_load("/spiffs/wifi.txt", wifi_ssid, wifi_pass);
+    if (has_creds) {
+        clock_app();
+    } else {
+        portal_app();
+    }
+}
+```
+
+That's it for main.cpp. Let's look at the `src/captive_portal.c` next:
+
+#### captive_portal.c
+
+Calling it a "captive portal" is somewhat wishful thinking. Without HTTPS you aren't getting off the ground in that regard with most phones, which default to it. However, maintaining a certificate for this hardware is a whole ball of wax that I don't want to take on. Furthermore captive portals are only kind of supported by phones, and it's dodgy. This codebase flew too close to the sun, and is named accordingly. I have not renamed it for historic reasons (I use it in other projects), and plus I intend to revisit this and potentially shore up the shortcomings that prevent it from being a full captive portal in the future.
+
+

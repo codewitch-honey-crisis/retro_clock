@@ -24,8 +24,8 @@
 #define CAPTIVE_PORTAL_SSID ClockPortal
 #endif
 #define CAPTIVE_PORTAL_SSID1 STRINGIFY(CAPTIVE_PORTAL_SSID)
-
 #define MAX_STA_CONN 5
+
 typedef struct {
     httpd_handle_t hd;
     int fd;
