@@ -487,3 +487,81 @@ lcd.update();
 ```
 That's the entire clock operation. Now we get to move on to some portal magic.
 
+```cpp
+static char portal_address[257];
+static void portal_on_connect(void* state) {
+    if(!captive_portal_get_address(portal_address,sizeof(portal_address)-1)) {
+        puts("Failed to get portal address");
+        return;
+    }
+    main_text.text("Configure:");
+    main_qr.color(ucolor_t::dark_blue);
+    main_qr.text(portal_address);
+    lcd.update();
+}
+```
+This handles the screen transition from "Connect" to "Configure" after the user connects to the exposed WiFi Access Point.
+
+Now let's move on to the main portal code. The following starts off by clearing the "configure" configuration value if it is set. When that value is present it signals to the device that the next boot will be into the configuration portal. Since we're here now the first thing we do is delete it. After that we initialize the portal and get the credentials of the access point:
+
+```cpp
+char qr_text[513];
+static void portal_app(void) {
+    config_clear_values("configure");
+    captive_portal_on_sta_connect(portal_on_connect,nullptr);
+    if(!captive_portal_init()) {
+        puts("Failed to initialize captive portal");
+        return;
+    }
+    if(!captive_portal_get_credentials(wifi_ssid,sizeof(wifi_ssid)-1,wifi_pass,sizeof(wifi_pass)-1)) {
+        puts("Failed to get captive portal credentials");
+        return;
+    }
+```
+After that, similar to how we did in the clock app, we take a font and reduce the size until the width fits within our parameters:
+
+```cpp
+main_text_font   = tt_font(text_font,LCD_HEIGHT,font_size_units::px);
+main_text_font.initialize();
+// find the appropriate size for the font
+text_info face_ti("Configure:", main_text_font);
+size16 face_area;
+main_text_font.measure((uint16_t)-1, face_ti, &face_area);
+while (face_area.width == 0 || face_area.width > (LCD_WIDTH * .4)) {
+    main_text_font.size(main_text_font.line_height() - 1, font_size_units::px);
+    main_text_font.measure((uint16_t)-1, face_ti, &face_area);
+}
+```
+Next we initialize the text that goes to the left of the QR code:
+
+```cpp
+main_screen.background_color(color_t::light_gray);
+main_text.bounds(srect16(spoint16::zero(),ssize16(LCD_WIDTH/2,main_text_font.line_height())).center_vertical(main_screen.bounds()));
+main_text.padding({10,0});
+main_text.font(main_text_font);
+main_text.color(ucolor_t::black);
+main_text.text("Connect:");
+main_text.text_justify(uix_justify::center_right);
+main_screen.register_control(main_text);
+```
+Then we initialize the QR code with the access point website's URL:
+
+```cpp
+main_qr.bounds(srect16(spoint16(LCD_WIDTH/2,0),ssize16(LCD_WIDTH/2,LCD_HEIGHT)));
+qr_text[0]='\0';
+if(!captive_portal_get_ap_address(qr_text,sizeof(qr_text)-1)) {
+    puts("Failed to get captive portal address");
+    captive_portal_end();
+    return;
+}
+main_qr.text(qr_text);
+main_qr.color(ucolor_t::black);
+main_screen.register_control(main_qr);
+```
+
+Finally, we set the screen and update the display.
+```cpp
+lcd.active_screen(main_screen);
+lcd.update();
+```
+

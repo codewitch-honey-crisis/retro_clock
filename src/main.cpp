@@ -318,7 +318,6 @@ static void portal_app(void) {
         main_text_font.measure((uint16_t)-1, face_ti, &face_area);
     }
     main_screen.background_color(color_t::light_gray);
-    main_screen.update();
     main_text.bounds(srect16(spoint16::zero(),ssize16(LCD_WIDTH/2,main_text_font.line_height())).center_vertical(main_screen.bounds()));
     main_text.padding({10,0});
     main_text.font(main_text_font);
@@ -338,7 +337,6 @@ static void portal_app(void) {
     main_screen.register_control(main_qr);
     lcd.active_screen(main_screen);
     lcd.update();
-
 }
 // generate a friendly AP password/identifier for this device
 static void gen_device_id() {
