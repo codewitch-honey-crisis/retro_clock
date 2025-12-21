@@ -5,7 +5,7 @@
 
 A retro digital clock that uses NTP to keep time. It is configurable via a portal it exposes when you start it.
 
-An article covering the code is provider [here](https://github.com/codewitch-honey-crisis/retro_clock/blob/main/article.md)
+An article covering the code is provided [here](https://github.com/codewitch-honey-crisis/retro_clock/blob/main/article.md)
 
 It was primarily designed for the TTGO T1 Display, but I will be adding support for more devices.
 
