@@ -25,6 +25,7 @@
 #endif
 #define CAPTIVE_PORTAL_SSID1 STRINGIFY(CAPTIVE_PORTAL_SSID)
 #define MAX_STA_CONN 5
+static const char* TAG = "portal";
 
 typedef struct {
     httpd_handle_t hd;
@@ -36,19 +37,17 @@ static void httpd_send_expr(const char* data, void *arg);
 static const char* httpd_crack_query(const char* url_part, char* name,
                                      char* value);
 static char* httpd_url_decode(char* dst, size_t dstlen, const char* src);
+
 #define HTTPD_CONTENT_IMPLEMENTATION
 #include "httpd_content.h"
-static const char* TAG = "portal";
-
 
 static bool wifi_intialized = false;
 static httpd_handle_t httpd_handle = NULL;
 static dns_server_handle_t dns_handle = NULL;
 static esp_netif_t* wifi_ap = NULL;
 static char* captive_portal_uri = NULL;
-char wifi_ssid[129];
-char wifi_pass[16];
-
+static char wifi_ssid[129];
+static char wifi_pass[16];
 static wifi_ap_record_t wifi_ap_info[256];
 static size_t wifi_ap_info_size = 0;
 static void scan_for_wifi_ssid(void)
@@ -129,7 +128,6 @@ const char* captive_portal_get_ap_list_ssid(size_t index) {
     }
     return (const char*)wifi_ap_info[index].ssid;
 }
-
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data) {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
@@ -198,7 +196,7 @@ static bool wifi_init_softap(void) {
     ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
-             CAPTIVE_PORTAL_SSID1, wifi_pass);
+             wifi_ssid, wifi_pass);
     wifi_intialized = true;
     return true;
 error:
