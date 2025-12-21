@@ -1348,6 +1348,8 @@ That wraps up the configuration portal's supporting code, but let's segue into t
 
 We won't touch `/www/default.css` because it's just static content, except to say it gets compressed and then gets embedded as part of the `httpd_content_default_css()` generated handler.
 
+#### index.clasp
+
 `/www/index.clasp` on the other hand, is far more interesting. I will be covering parts of it, as the entire thing is quite long due to the timezone information. ClASP pages work like classic Microsoft ASP except instead of VBScript or JScript in the backing code, it's C or C++. `<% %>` and `<%= %>` context switch from HTML or otherwise textual content to C/++ code.
 
 ```asp
@@ -1388,4 +1390,10 @@ Aside from that, it's just a `<form>` with several query parameters passed as HT
 
 That covers the important bits of the `/www` folder.
 
+That wraps up the code that we'll cover in the article, because the rest is fairly easy to navigate, and I am not out to create a War and Peace length missive on this code, nor force you dear reader, to endure such a thing.
 
+## Conclusion
+
+Creating a cute little retro clock display is nice.
+Using a portal to configure an ESP32 to allow it to operate is even better.
+I hope you enjoyed this code!
