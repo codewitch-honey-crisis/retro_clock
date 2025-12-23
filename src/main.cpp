@@ -45,10 +45,15 @@ icon_t main_wifi;
 qr_t main_qr;
 
 tt_font main_text_font(clock_font, LCD_HEIGHT, font_size_units::px);
-
+#ifndef SEGRED
 constexpr static const auto back_color = color_t::white.blend(color_t::black, 0.5f);
 constexpr static const auto ghost_color = ucolor_t::white.blend(ucolor_t::black, 0.42f);
 constexpr static const auto text_color = ucolor_t::black;
+#else
+constexpr static const auto back_color = color_t::black;
+constexpr static const auto ghost_color = ucolor_t::red.blend(ucolor_t::black, 0.1f);
+constexpr static const auto text_color = ucolor_t::red;
+#endif
 
 #ifndef SEG14
 static const constexpr char* face_ghost_text = "88:88.";
