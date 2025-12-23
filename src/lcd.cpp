@@ -134,7 +134,7 @@ void lcd_init(void) {
 #ifdef LCD_SPI_HOST
     spi_bus_config_t spi_cfg;
     memset(&spi_cfg,0,sizeof(spi_cfg));
-    uint32_t spi_sz = (((LCD_WIDTH*(LCD_HEIGHT/LCD_DIVISOR)*LCD_BIT_DEPTH))+7)/8;
+    uint32_t spi_sz = (((LCD_WIDTH*(LCD_HEIGHT/LCD_DIVISOR)*LCD_BIT_DEPTH))+7)/8+8;
     if(spi_sz>32*1024) {
         spi_sz = 32*1024;
     }

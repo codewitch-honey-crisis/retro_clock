@@ -192,10 +192,10 @@ static char time_buffer[7];
 static int32_t time_offset = 0;
 static time_t time_old = 0;
 static time_t time_now = 0;
-static bool time_military = false
+static bool time_military = false;
 ```
 
-The `time_buffer` field holds a string with the current time as text. The `time_offset` field holds the number of seconds offset from UTC. The `time_old` holds the previous time before the most recent update, while `time_now` hold the current time. These two allow for a differential test to see if the time has changed. `time_military` indicates whether or not the time is 24-hour (military time).
+The `time_buffer` field holds a string with the current time as text. The `time_offset` field holds the number of seconds offset from UTC. `time_old` holds the previous time before the most recent update, while `time_now` hold the current time. These two allow for a differential test to see if the time has changed. `time_military` indicates whether or not the time is 24-hour (military time).
 
 Next up is the part of our code that paints the WiFi icon. It paints it in the ghost color or the face color depending if the WiFi is active or not:
 
@@ -264,7 +264,7 @@ static rectf correct_aspect(const rect16& r, float aspect) {
 }
 ```
 
-While we could directly render SVG to the screen as needed, SVGs are not able to be rendered in different colors, because they themselves are color images. However, our WiFi icon is strictly black and white. We can leverage that by creating an *alpha transparency map* - a bitmap where each pixel indicates how opaque the draw should be at that position. We can then use that map to draw in any color we give it. The next routine handles creating one of these alpha transparency maps, `wifi_icon` from the SVG. To render that SVG we created a `bitmap`, bound a vector `canvas` to it, and then rendered the SVG contents using that.
+While we could directly render SVG to the screen as needed, SVGs are not able to be rendered in different colors, because they themselves are color images. However, our WiFi icon is strictly black and white. We can leverage that by creating an *alpha transparency map* - a bitmap where each pixel indicates how opaque the draw should be at that position. We can then use that map to draw in any color we give it. The next routine handles creating one of these alpha transparency maps, `wifi_icon` from the SVG. To render that SVG we created a `bitmap`, bound a vector `canvas` to it, and then rendered the SVG contents using that:
 
 ```cpp
 static bool create_wifi_icon(uint16_t icon_size) {
@@ -325,7 +325,7 @@ error:
 }
 ```
 
-Now a segue into a bit of NTP handling. The following is a callback method that reports the new time whenever it gets updated via NTP. Here we just report it, update our time values, and invalidate the `main_wifi` control to force it to repaint.
+Now a segue into a bit of NTP handling. The following is a callback method that reports the new time whenever it gets updated via NTP. Here we just report it, update our time values, and invalidate the `main_wifi` control to force it to repaint:
 
 ```cpp
 void ntp_on_sync(time_t val, void* state) {
@@ -371,7 +371,7 @@ while (face_area.width == 0 || face_area.width > (LCD_WIDTH * .8)) {
 }
 ```
 
-Next we call the wifi icon rasterization routine covered prior:
+Next we call the WiFi icon rasterization routine covered prior:
 
 ```cpp
 // rasterize the wifi icon
@@ -480,7 +480,7 @@ Next we handle the case where we're still syncing (`time_now` is zero) wherein e
 
 The next one handles post sync operation (`time_now` is non-zero) where we first update the time every second, and then we just ensure `main_text` is visible in case it was off because we were flashing it before.
 
-For the final part of the application loop we just poll the `config_input` subsystem to enter the config portal, and keep the `lcd` object up to date.
+For the final part of the application loop we just poll the `config_input` subsystem to enter the config portal, and keep the `lcd` object up to date:
 ```cpp
 config_input_update();
 lcd.update();
@@ -559,7 +559,7 @@ main_qr.color(ucolor_t::black);
 main_screen.register_control(main_qr);
 ```
 
-Finally, we set the screen and update the display.
+Finally, we set the screen and update the display:
 ```cpp
 lcd.active_screen(main_screen);
 lcd.update();
@@ -570,7 +570,7 @@ That's it for the portal, now we're just dealing with initialization and entry p
 The password for the access point is not really for security. The only thing it prevents is someone hijacking your configuration portal from say, next door. It's not meant to be strong, or provide anything more than a cursory check against random people fiddling with your portal. What I've done is decided that this thing should be unique, but short-ish and friendly to remember.
 
 To that end, we use the ESP32s entropy source RNG and create a string with vowels and consonants and a number on the end, like "foozbart12". It then stores this as a deviceid configuration value.
-Presently we only use it as an AP password, but it could be used elsewhere because as I said, it's not really for securitry.
+Presently we only use it as an AP password, but it could be used elsewhere because as I said, it's not really for security:
 
 ```cpp
 // generate a friendly AP password/identifier for this device
@@ -606,7 +606,7 @@ static void gen_device_id() {
 }
 ```
 
-We have to initialize SPIFFS before we can do much.
+We have to initialize SPIFFS before we can do much:
 
 ```cpp
 static void spiffs_init(void) {
@@ -620,7 +620,7 @@ static void spiffs_init(void) {
 }
 ```
 
-In the entry point we do core initialization, generate the deviceid, and then determine if we need to enter the portal or the clock app.
+In the entry point we do core initialization, generate the deviceid, and then determine if we need to enter the portal or the clock app:
 
 ```cpp
 extern "C" void app_main(void) {
@@ -653,7 +653,7 @@ That's it for main.cpp. Let's look at the `src/captive_portal.c` next:
 
 #### captive_portal.c
 
-Calling it a "captive portal" is somewhat wishful thinking. Without HTTPS you aren't getting off the ground in that regard with most phones, which default to it. However, maintaining a certificate for this hardware is a whole ball of wax that I don't want to take on. Furthermore captive portals are only kind of supported by phones, and it's dodgy. This codebase flew too close to the sun, and is named accordingly. I have not renamed it for historic reasons (I use it in other projects), and plus I intend to revisit this and potentially shore up the shortcomings that prevent it from being a full captive portal in the future.
+Calling it a "captive portal" is somewhat wishful thinking. Without HTTPS you aren't getting off the ground in that regard with most phones, which default to it. However, maintaining a certificate for this hardware is a whole ball of wax that I don't want to take on. Furthermore captive portals are only kind of supported by phones, and it's dodgy. This codebase flew too close to the sun, and is named accordingly. I have not renamed it for historic reasons (I use it in other projects), and plus I intend to revisit this and potentially shore up the shortcomings that prevent it from being a full captive portal in the future. First some includes and defines (boilerplate):
 
 ```c
 #ifdef ESP_PLATFORM
@@ -698,12 +698,12 @@ typedef struct {
 ```
 The first two fields are used by our socket writing code to send data over the connected TCP socket. The `path_and_query` field is used by our code inside the request handler(s) as necessary.
 
-These two prototypes are used by our response handlers generated in `/include/httpd_content.h` to write data out to a socket. Here `arg` would end up being an instance of the structure just above.
+These two prototypes are used by our response handlers generated in `/include/httpd_content.h` to write data out to a socket. Here `arg` would end up being an instance of the structure just above:
 ```c
 static void httpd_send_block(const char *data, size_t len, void *arg);
 static void httpd_send_expr(const char* data, void *arg);
 ```
-The next two prototypes are used inside our SSR page `/include/index.clasp` for the portal:
+The next two prototypes are used inside our SSR page `/www/index.clasp` for the portal:
 ```c
 static const char* httpd_crack_query(const char* url_part, char* name,
                                      char* value);
@@ -716,7 +716,7 @@ Now we include the ClASP generated content, including its implementation code in
 ```
 The code therein is generated from the contents of `/www` as part of the build process.
 
-Next up, a bunch of state we use to track the wifi information
+Next up, we need a bunch of state we use to track the WiFi information:
 
 ```c
 static bool wifi_intialized = false;
@@ -1028,7 +1028,7 @@ static void parse_url_and_apply(const char* url) {
 ```
 Admittedly this code can probably be simplified, but doing so requires some time for testing and such, which I'll get to.
 
-On an error we just send our portal page again. It may be better to send an actual redirect, I am not sure.
+On an error we just send our portal page again. It may be better to send an actual redirect, I am not sure:
 
 ```c
 static esp_err_t httpd_err_handler(httpd_req_t *req, httpd_err_code_t error) {
@@ -1075,7 +1075,7 @@ static esp_err_t httpd_handle_request(httpd_req_t* req) {
 ```
 ClASP is the reason the above is so minimal. All the real work is done by the content handlers which are generated as part of `/include/httpd_content.h`. 
 
-Next we have the routine to actually initialize the httpd www server
+Next we have the routine to actually initialize the httpd www server:
 
 ```c
 static bool www_start(void) {
@@ -1350,7 +1350,7 @@ We won't touch `/www/default.css` because it's just static content, except to sa
 
 #### index.clasp
 
-`/www/index.clasp` on the other hand, is far more interesting. I will be covering parts of it, as the entire thing is quite long due to the timezone information. ClASP pages work like classic Microsoft ASP except instead of VBScript or JScript in the backing code, it's C or C++. `<% %>` and `<%= %>` context switch from HTML or otherwise textual content to C/++ code.
+`/www/index.clasp` on the other hand, is far more interesting. I will be covering parts of it, as the entire thing is quite long due to the timezone information. ClASP pages work like classic Microsoft ASP except instead of VBScript or JScript in the backing code, it's C or C++. `<% %>` and `<%= %>` context switch from HTML or otherwise textual content to C/++ code:
 
 ```asp
 <%@status code="200" text="OK"%>
