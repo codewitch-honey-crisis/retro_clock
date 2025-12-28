@@ -255,13 +255,13 @@ static void parse_url_and_apply(const char* url) {
     char pass[64];
     pass[0]='\0';
     char tz[64];
-    char military[64];
     char name[64];
     char value[64];
     bool restart = false;
     bool set_creds = false;
     bool set_tz = false;
     bool set_military = false;
+    bool set_dark = false;
     bool configured = false;
     if (query != NULL) {
         while (1) {
@@ -283,7 +283,9 @@ static void parse_url_and_apply(const char* url) {
             }
             if(0==strcmp("military",name)) {
                 set_military=true;
-                strncpy(military,value,63);
+            }
+            if(0==strcmp("dark",name)) {
+                set_dark=true;
             }
             if(0==strcmp("configure",name)) {
                 configured=true;
@@ -313,6 +315,15 @@ static void parse_url_and_apply(const char* url) {
         if(!restart) restart=set_military!=old_military;
     } else {
         config_clear_values("military");
+        if(!restart) restart=set_military!=old_military;
+    }
+    bool old_dark = config_get_value("dark",0,NULL,0);
+    if(set_dark) {
+        config_clear_values("dark");
+        config_add_value("dark","1");
+        if(!restart) restart=set_dark!=old_dark;
+    } else {
+        config_clear_values("dark");
         if(!restart) restart=set_military!=old_military;
     }
     if(configured) {

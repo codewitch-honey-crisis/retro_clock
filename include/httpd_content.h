@@ -217,7 +217,7 @@ void httpd_content_index_clasp(void* resp_arg) {
         "        id=\"pass\"\n                        name=\"pass\" \n                        v"
         "alue=\"\r\n", 630,  resp_arg);
      httpd_send_expr(pass,  resp_arg);
-     httpd_send_block("2a64\r\n\" \n                        class=\"form-input\"\n          "
+     httpd_send_block("2c60\r\n\" \n                        class=\"form-input\"\n          "
         "              placeholder=\"Enter your WiFi password\"\n                        aut"
         "ocomplete=\"current-password\"\n                        aria-label=\"WiFi Password\">"
         "\n                </div>\n                \n                <div class=\"form-group\""
@@ -351,8 +351,15 @@ void httpd_content_index_clasp(void* resp_arg) {
         "x\"\n                            aria-label=\"Use 24 hour time format\">\n           "
         "             <label for=\"military\" class=\"checkbox-label\">Use 24-hour time forma"
         "t</label>\n                    </div>\n                </div>\n                \n   "
-        "             <button type=\"submit\" name=\"configure\" class=\"submit-button\">Save C"
-        "onfiguration</button>\n            </form>\n        </div>\n    </body>\n</html>\r\n", 10860,  resp_arg);
+        "             <div class=\"form-group\">\n                    <div class=\"checkbox-g"
+        "roup\">\n                        <input \n                            type=\"checkbo"
+        "x\" \n                            id=\"dark\"\n                            name=\"dark"
+        "\" \n                            class=\"form-checkbox\"\n                           "
+        " aria-label=\"Use dark distplay mode\">\n                        <label for=\"dark\" "
+        "class=\"checkbox-label\">Use dark distplay mode</label>\n                    </div>"
+        "\n                </div>\n\n                <button type=\"submit\" name=\"configure\" "
+        "class=\"submit-button\">Save Configuration</button>\n            </form>\n        </"
+        "div>\n    </body>\n</html>\r\n", 11368,  resp_arg);
      httpd_send_block("0\r\n\r\n", 5,  resp_arg);
        free(resp_arg);
     

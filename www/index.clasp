@@ -182,6 +182,18 @@
                     </div>
                 </div>
                 
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input 
+                            type="checkbox" 
+                            id="dark"
+                            name="dark" 
+                            class="form-checkbox"
+                            aria-label="Use dark distplay mode">
+                        <label for="dark" class="checkbox-label">Use dark distplay mode</label>
+                    </div>
+                </div>
+
                 <button type="submit" name="configure" class="submit-button">Save Configuration</button>
             </form>
         </div>

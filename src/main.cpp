@@ -46,25 +46,21 @@ qr_t main_qr;
 
 tt_font main_text_font(clock_font, LCD_HEIGHT, font_size_units::px);
 #if LCD_BIT_DEPTH == 1
-#ifndef SEGRED
-constexpr static const auto back_color = color_t::white;
-constexpr static const auto ghost_color = ucolor_t::white;
-constexpr static const auto text_color = ucolor_t::black;
+constexpr static const auto light_back_color = color_t::white;
+constexpr static const auto light_ghost_color = ucolor_t::white;
+constexpr static const auto light_text_color = ucolor_t::black;
+
+constexpr static const auto dark_back_color = color_t::black;
+constexpr static const auto dark_ghost_color = ucolor_t::black;
+constexpr static const auto dark_text_color = ucolor_t::white;
 #else
-constexpr static const auto back_color = color_t::black;
-constexpr static const auto ghost_color = ucolor_t::black;
-constexpr static const auto text_color = ucolor_t::white;
-#endif
-#else
-#ifndef SEGRED
-constexpr static const auto back_color = color_t::white.blend(color_t::black, 0.5f);
-constexpr static const auto ghost_color = ucolor_t::white.blend(ucolor_t::black, 0.42f);
-constexpr static const auto text_color = ucolor_t::black;
-#else
-constexpr static const auto back_color = color_t::black;
-constexpr static const auto ghost_color = ucolor_t::red.blend(ucolor_t::black, 0.1f);
-constexpr static const auto text_color = ucolor_t::red;
-#endif
+constexpr static const auto light_back_color = color_t::white.blend(color_t::black, 0.5f);
+constexpr static const auto light_ghost_color = ucolor_t::white.blend(ucolor_t::black, 0.42f);
+constexpr static const auto light_text_color = ucolor_t::black;
+
+constexpr static const auto dark_back_color = color_t::black;
+constexpr static const auto dark_ghost_color = ucolor_t::red.blend(ucolor_t::black, 0.1f);
+constexpr static const auto dark_text_color = ucolor_t::red;
 #endif
 #ifndef SEG14
 static const constexpr char* face_ghost_text = "88:88.";
@@ -73,6 +69,10 @@ static const constexpr char* face_ghost_text_mil = "88:88";
 static const constexpr char* face_ghost_text = "\x7E\x7E:\x7E\x7E.";
 static const constexpr char* face_ghost_text_mil = "\x7E\x7E:\x7E\x7E";
 #endif
+
+static screen_pixel_t back_color;
+static uix_pixel ghost_color;
+static uix_pixel text_color;
 
 static char time_buffer[7];
 static int32_t time_offset = 0;
@@ -210,6 +210,15 @@ static void clock_app(void) {
         sscanf(buf,"%ld",&time_offset);
     }
     time_military = config_get_value("military",0,nullptr,0);
+    if(config_get_value("dark",0,nullptr,0)) {
+        text_color = dark_text_color;
+        ghost_color = dark_ghost_color;
+        back_color = dark_back_color;
+    } else {
+        text_color = light_text_color;
+        ghost_color = light_ghost_color;
+        back_color = light_back_color;
+    }
     main_text_font.initialize();
     // find the appropriate size for the font
     text_info face_ti(time_military?face_ghost_text_mil:face_ghost_text, main_text_font);
