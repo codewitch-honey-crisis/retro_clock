@@ -13,6 +13,7 @@ uix::display lcd;
 // UIX calls this to send bitmaps to the display
 static void uix_flush(const gfx::rect16& bounds, const void *bitmap, void *state)
 {
+    // printf("FLUSH: (%d, %d)-(%d, %d) %dx%d\n",bounds.x1,bounds.y1,bounds.x2,bounds.y2,bounds.x2-bounds.x1+1,bounds.y2-bounds.y1+1);
     panel_lcd_flush(bounds.x1, bounds.y1, bounds.x2 , bounds.y2 , (void*)bitmap);
 }
 void panel_lcd_flush_complete() {
