@@ -45,6 +45,9 @@ icon_t main_wifi;
 qr_t main_qr;
 
 tt_font main_text_font(clock_font, LCD_HEIGHT, font_size_units::px);
+
+static font_draw_cache face_draw_cache;
+static font_measure_cache face_measure_cache;
 #if LCD_BIT_DEPTH == 1
 constexpr static const auto light_back_color = color_t::white;
 constexpr static const auto light_ghost_color = ucolor_t::white;
@@ -204,6 +207,10 @@ static char wifi_pass[129];
 static bool wifi_connected_old = false;
 static bool wifi_connected = false;
 static void clock_app(void) {
+    face_draw_cache.max_entries(16);
+    face_draw_cache.initialize();
+    face_measure_cache.max_entries(16);
+    face_measure_cache.initialize();
     time_offset = 0;
     char buf[65];
     if(config_get_value("tzoffset",0,buf,sizeof(buf)-1)) {
@@ -238,6 +245,8 @@ static void clock_app(void) {
     main_ghost.color(ghost_color);
     main_ghost.text(face_ti.text,face_ti.text_byte_count);
     main_ghost.font(main_text_font);
+    main_ghost.measure_cache(face_measure_cache);
+    main_ghost.draw_cache(face_draw_cache);
     main_screen.register_control(main_ghost);
 
     main_text.bounds(srect16(spoint16::zero(), (ssize16)face_area).center(main_screen.bounds()));
@@ -245,6 +254,8 @@ static void clock_app(void) {
     main_text.text_justify(uix_justify::top_left);
     main_text.color(text_color);
     main_text.font(main_text_font);
+    main_text.measure_cache(face_measure_cache);
+    main_text.draw_cache(face_draw_cache);
     main_screen.register_control(main_text);
     // set the initial time value
     time_update();
