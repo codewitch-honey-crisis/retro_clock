@@ -1,6 +1,6 @@
 #pragma once
 #include <uix.hpp>
-#include "lcd_config.h"
+#include "panel.h"
 extern uix::display lcd;
 
-void lcd_init(void);
+void display_init(void);

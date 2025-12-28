@@ -11,7 +11,7 @@
 #include "config_input.h"
 #include "captive_portal.h"
 #include "ui.hpp"
-#include "lcd.hpp"
+#include "display.hpp"
 #include "ntp.h"
 #include "wifi.h"
 // from https://www.keshikan.net/fonts-e.html
@@ -45,6 +45,17 @@ icon_t main_wifi;
 qr_t main_qr;
 
 tt_font main_text_font(clock_font, LCD_HEIGHT, font_size_units::px);
+#if LCD_BIT_DEPTH == 1
+#ifndef SEGRED
+constexpr static const auto back_color = color_t::white;
+constexpr static const auto ghost_color = ucolor_t::white;
+constexpr static const auto text_color = ucolor_t::black;
+#else
+constexpr static const auto back_color = color_t::black;
+constexpr static const auto ghost_color = ucolor_t::black;
+constexpr static const auto text_color = ucolor_t::white;
+#endif
+#else
 #ifndef SEGRED
 constexpr static const auto back_color = color_t::white.blend(color_t::black, 0.5f);
 constexpr static const auto ghost_color = ucolor_t::white.blend(ucolor_t::black, 0.42f);
@@ -54,7 +65,7 @@ constexpr static const auto back_color = color_t::black;
 constexpr static const auto ghost_color = ucolor_t::red.blend(ucolor_t::black, 0.1f);
 constexpr static const auto text_color = ucolor_t::red;
 #endif
-
+#endif
 #ifndef SEG14
 static const constexpr char* face_ghost_text = "88:88.";
 static const constexpr char* face_ghost_text_mil = "88:88";
@@ -183,6 +194,11 @@ void ntp_on_sync(time_t val, void* state) {
     time_now = val;
     main_wifi.invalidate();
 }
+static void update_display() {
+    while(lcd.dirty()) {
+        lcd.update();
+    }
+}
 static char wifi_ssid[65];
 static char wifi_pass[129];
 static bool wifi_connected_old = false;
@@ -286,7 +302,7 @@ static void clock_app(void) {
             main_text.visible(true);
         }
         config_input_update();
-        lcd.update();
+        update_display();
     }
 }
 static char portal_address[257];
@@ -298,7 +314,7 @@ static void portal_on_connect(void* state) {
     main_text.text("Configure:");
     main_qr.color(ucolor_t::dark_blue);
     main_qr.text(portal_address);
-    lcd.update();
+    update_display();
 }
 char qr_text[513];
 static void portal_app(void) {
@@ -341,7 +357,7 @@ static void portal_app(void) {
     main_qr.color(ucolor_t::black);
     main_screen.register_control(main_qr);
     lcd.active_screen(main_screen);
-    lcd.update();
+    update_display();
 }
 // generate a friendly AP password/identifier for this device
 static void gen_device_id() {
@@ -386,9 +402,8 @@ static void spiffs_init(void) {
 }
 
 extern "C" void app_main(void) {
-    lcd_init();
+    display_init();
     spiffs_init();
-    config_input_init();
     if(!config_get_value("deviceid",0,NULL,0)) {
         gen_device_id();
     }

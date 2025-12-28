@@ -1,26 +1,40 @@
 #include "config_input.h"
+#include "panel.h"
 #include <memory.h>
 #include <stdint.h>
 #include "config.h"
 #include "esp_system.h"
-#ifdef TTGO_T1
-#include "driver/gpio.h"    
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#ifdef BUTTON
+static TickType_t pressed_ts = 0;
 #endif
-void config_input_init(void) {
-#ifdef TTGO_T1
-    gpio_config_t gpio_cfg;
-    memset(&gpio_cfg,0,sizeof(gpio_cfg));
-    gpio_cfg.mode = GPIO_MODE_INPUT;
-    gpio_cfg.pin_bit_mask = ((uint64_t)1) | (((uint64_t)1)<<35);
-    gpio_cfg.pull_up_en = 1;
-    ESP_ERROR_CHECK(gpio_config(&gpio_cfg));
+#ifdef TOUCH_BUS
+static TickType_t touched_ts = 0;
 #endif
-}
 void config_input_update(void) {
-#ifdef TTGO_T1
-    if(!gpio_get_level((gpio_num_t)0)||!gpio_get_level((gpio_num_t)35)) {
-        config_add_value("configure","");
-        esp_restart();
+#ifdef BUTTON
+    if(!panel_button_read_all()) {
+        pressed_ts = xTaskGetTickCount();
+    } else {
+        if(xTaskGetTickCount()>pressed_ts+pdMS_TO_TICKS(250)) {
+            config_add_value("configure","");
+            esp_restart();
+        }
+    }
+#endif
+#ifdef TOUCH_BUS
+    panel_touch_update();
+    uint16_t x,y,s;
+    size_t count = 1;
+    panel_touch_read_raw(&count,&x,&y,&s);
+    if(!count) {
+        touched_ts = xTaskGetTickCount();
+    } else {
+        if(xTaskGetTickCount()>touched_ts+pdMS_TO_TICKS(250)) {
+            config_add_value("configure","");
+            esp_restart();
+        }
     }
 #endif
 }

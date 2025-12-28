@@ -5,7 +5,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void config_input_init(void);
 void config_input_update(void);
 #ifdef __cplusplus
 }
