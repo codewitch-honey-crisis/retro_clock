@@ -355,11 +355,11 @@ void httpd_content_index_clasp(void* resp_arg) {
         "roup\">\n                        <input \n                            type=\"checkbo"
         "x\" \n                            id=\"dark\"\n                            name=\"dark"
         "\" \n                            class=\"form-checkbox\"\n                           "
-        " aria-label=\"Use dark distplay mode\">\n                        <label for=\"dark\" "
+        " aria-label=\"Use dark display mode\">\n                        <label for=\"dark\" "
         "class=\"checkbox-label\">Use dark distplay mode</label>\n                    </div>"
         "\n                </div>\n\n                <button type=\"submit\" name=\"configure\" "
         "class=\"submit-button\">Save Configuration</button>\n            </form>\n        </"
-        "div>\n    </body>\n</html>\r\n", 11368,  resp_arg);
+        "div>\n    </body>\n</html>\r\n", 11367,  resp_arg);
      httpd_send_block("0\r\n\r\n", 5,  resp_arg);
        free(resp_arg);
     
