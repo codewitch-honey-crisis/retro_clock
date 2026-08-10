@@ -189,7 +189,7 @@
                             id="dark"
                             name="dark" 
                             class="form-checkbox"
-                            aria-label="Use dark distplay mode">
+                            aria-label="Use dark display mode">
                         <label for="dark" class="checkbox-label">Use dark distplay mode</label>
                     </div>
                 </div>
