@@ -83,7 +83,7 @@ static time_t time_old = 0;
 static time_t time_now = 0;
 static bool time_military = false;
 
-bitmap<alpha_pixel<4>> wifi_icon;
+bitmap<alpha_pixel<8>> wifi_icon;
 void main_wifi_on_paint(surface_t& destination, const srect16& clip, void* state) {
     bool wifi_enabled = true;
     if(time_now>0) {
@@ -136,14 +136,14 @@ static rectf correct_aspect(const rect16& r, float aspect) {
     return (rectf)result;
 }
 static bool create_wifi_icon(uint16_t icon_size) {
-    // create a new bitmap in 4-bit grayscale
-    auto bmp = create_bitmap<gsc_pixel<4>>({icon_size,icon_size});
+    // create a new bitmap in 8-bit grayscale
+    auto bmp = create_bitmap<gsc_pixel<8>>({icon_size,icon_size});
     if(bmp.begin()==nullptr) {
         // out of memory
         return false;
     }
     // fill with white
-    bmp.fill(bmp.bounds(),gsc_pixel<4>(15));
+    bmp.fill(bmp.bounds(),gsc_pixel<8>(0xFF));
     // assign the bitmap array entry to the bitmap's buffer
     canvas cvs(bmp.dimensions());
     if(gfx_result::success!=cvs.initialize()) {
