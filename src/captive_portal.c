@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/param.h>
 
-#include "common.h"
+//#include "common.h"
 #include "dns_server.h"
 #include "config.h" 
 #include "esp_event.h"
@@ -181,7 +181,7 @@ static bool wifi_init_softap(void) {
     if(ESP_OK!=esp_wifi_set_mode(WIFI_MODE_AP)) {
         goto error;
     }
-    if(ESP_OK!=esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config)) {
+    if(ESP_OK!=esp_wifi_set_config(WIFI_IF_AP, &wifi_config)) {
         goto error;
     }
     if(ESP_OK!=esp_wifi_start()) {
@@ -279,7 +279,7 @@ static void parse_url_and_apply(const char* url) {
             }
             if(0==strcmp("tzoffset",name)) {
                 set_tz=true;
-                strncpy(tz,value,63);
+                strncpy(tz,value,sizeof(tz));
             }
             if(0==strcmp("military",name)) {
                 set_military=true;
